@@ -49,7 +49,7 @@ export default function Series() {
     { key: 'nome', label: 'Nome' },
     { key: 'acoes', label: 'Ações', render: r => (
       <div style={{ display: 'flex', gap: 6 }}>
-        <Btn size="sm" variant="ghost" onClick={() => setModal({ type: 'edit', item: r }}><Pencil size={13} />Editar</Btn>
+        <Btn size="sm" variant="ghost" onClick={() => setModal({ type: 'edit', item: r })}><Pencil size={13} />Editar</Btn>
         <Btn size="sm" variant="danger" onClick={() => del(r.id)}><Trash2 size={13} /></Btn>
       </div>
     )},
