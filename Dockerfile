@@ -1,4 +1,4 @@
-# ── Stage 1: build frontend ──────────────────────────────────────────────────
+# ── Stage 1: build frontend ───────────────────────────────────────────────────
 FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
@@ -7,18 +7,28 @@ COPY frontend/ .
 RUN npm run build
 # output: /app/frontend/dist
 
-# ── Stage 2: build backend (embeds frontend as static assets) ─────────────────
-FROM maven:3.9.6-eclipse-temurin-17 AS backend-build
+# ── Stage 2: backend Node.js + frontend estático ──────────────────────────────
+FROM node:20-alpine
 WORKDIR /app
-COPY backend/ .
-# copia o dist do React para dentro do jar como recursos estáticos
-COPY --from=frontend-build /app/frontend/dist ./src/main/resources/static/
-RUN mvn clean package -DskipTests --no-transfer-progress
-# output: /app/target/academico-1.0.0.jar
 
-# ── Stage 3: runtime ──────────────────────────────────────────────────────────
-FROM eclipse-temurin:17-jre-alpine
+# Instala dependências do backend (apenas produção)
+COPY backend-node/package*.json ./backend-node/
+WORKDIR /app/backend-node
+RUN npm install --omit=dev
+
+# Copia código-fonte do backend
+COPY backend-node/ ./
+
+# Gera o Prisma Client (não precisa de banco em tempo de build)
+RUN npx prisma generate
+
+# Copia o build do React para o lugar que o Express serve
 WORKDIR /app
-COPY --from=backend-build /app/target/*.jar app.jar
+COPY --from=frontend-build /app/frontend/dist ./frontend/dist
+
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+WORKDIR /app/backend-node
+# prisma db push sincroniza o schema (substitui o ddl-auto=update do Java)
+# depois sobe o servidor Express
+CMD ["sh", "-c", "npx prisma db push && node src/index.js"]
