@@ -1,14 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
 import api from '../api.js'
-import PageHeader from '../components/PageHeader.jsx'
-import Table from '../components/Table.jsx'
-import Btn from '../components/Btn.jsx'
-
-const sel = {
-  padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 7,
-  fontSize: 13, background: '#fff', minWidth: 180
-}
+import Icon from '../components/Icon.jsx'
 
 export default function Vinculos() {
   const [tab, setTab] = useState('aluno')
@@ -16,14 +8,14 @@ export default function Vinculos() {
   const [alunos, setAlunos] = useState([])
   const [professores, setProfessores] = useState([])
   const [materias, setMaterias] = useState([])
-
   const [selTurma, setSelTurma] = useState('')
   const [vincAT, setVincAT] = useState([])
   const [vincPTM, setVincPTM] = useState([])
-
   const [addAlunoId, setAddAlunoId] = useState('')
   const [addProfId, setAddProfId] = useState('')
   const [addMatId, setAddMatId] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [erro, setErro] = useState('')
 
   useEffect(() => {
     api.get('/turmas').then(r => setTurmas(r.data))
@@ -36,7 +28,7 @@ export default function Vinculos() {
   const loadVincPTM = tid => api.get(`/vinculos/professor-turma-materia/${tid}`).then(r => setVincPTM(r.data))
 
   const onTurmaChange = tid => {
-    setSelTurma(tid)
+    setSelTurma(tid); setVincAT([]); setVincPTM([]); setErro('')
     if (!tid) return
     loadVincAT(tid)
     loadVincPTM(tid)
@@ -44,110 +36,183 @@ export default function Vinculos() {
 
   const vincularAluno = async () => {
     if (!selTurma || !addAlunoId) return
-    await api.post('/vinculos/aluno-turma', { alunoId: Number(addAlunoId), turmaId: Number(selTurma) })
-    setAddAlunoId('')
-    loadVincAT(selTurma)
+    setBusy(true); setErro('')
+    try {
+      await api.post('/vinculos/aluno-turma', { alunoId: Number(addAlunoId), turmaId: Number(selTurma) })
+      setAddAlunoId('')
+      loadVincAT(selTurma)
+    } catch (err) {
+      setErro(err.response?.data || 'Erro ao vincular aluno.')
+    } finally { setBusy(false) }
   }
 
   const desvincularAluno = async alunoId => {
-    await api.delete('/vinculos/aluno-turma', { params: { alunoId, turmaId: selTurma } })
-    loadVincAT(selTurma)
+    setBusy(true); setErro('')
+    try {
+      await api.delete('/vinculos/aluno-turma', { params: { alunoId, turmaId: selTurma } })
+      loadVincAT(selTurma)
+    } catch { setErro('Erro ao remover.') }
+    finally { setBusy(false) }
   }
 
   const vincularPTM = async () => {
     if (!selTurma || !addProfId || !addMatId) return
-    await api.post('/vinculos/professor-turma-materia', {
-      professorId: Number(addProfId), turmaId: Number(selTurma), materiaId: Number(addMatId)
-    })
-    setAddProfId(''); setAddMatId('')
-    loadVincPTM(selTurma)
+    setBusy(true); setErro('')
+    try {
+      await api.post('/vinculos/professor-turma-materia', {
+        professorId: Number(addProfId), turmaId: Number(selTurma), materiaId: Number(addMatId),
+      })
+      setAddProfId(''); setAddMatId('')
+      loadVincPTM(selTurma)
+    } catch (err) {
+      setErro(err.response?.data || 'Erro ao vincular professor.')
+    } finally { setBusy(false) }
   }
 
   const desvincularPTM = async id => {
-    await api.delete(`/vinculos/professor-turma-materia/${id}`)
-    loadVincPTM(selTurma)
+    setBusy(true); setErro('')
+    try {
+      await api.delete(`/vinculos/professor-turma-materia/${id}`)
+      loadVincPTM(selTurma)
+    } catch { setErro('Erro ao remover.') }
+    finally { setBusy(false) }
   }
 
-  const tabStyle = active => ({
-    padding: '8px 20px', border: 'none', cursor: 'pointer', borderRadius: '7px 7px 0 0',
-    fontWeight: 600, fontSize: 13,
-    background: active ? '#fff' : 'transparent',
-    color: active ? '#3b82f6' : '#64748b',
-    borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  })
+  const alunosDisponiveis = alunos.filter(a => !vincAT.some(v => v.aluno?.id === a.id))
+  const turmaSelecionada = turmas.find(t => t.id === Number(selTurma))
 
   return (
-    <div>
-      <PageHeader title="Vínculos" subtitle="Matricule alunos em turmas e atribua professores às matérias" />
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">Acadêmico · Vínculos</div>
+          <h1 className="page-title">Vínculos</h1>
+          <div className="page-subtitle">Matricule alunos e atribua professores às turmas</div>
+        </div>
+      </div>
 
-      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 13, color: '#475569', fontWeight: 600 }}>Turma:</span>
-        <select style={sel} value={selTurma} onChange={e => onTurmaChange(e.target.value)}>
-          <option value="">Selecione uma turma...</option>
-          {turmas.map(t => <option key={t.id} value={t.id}>{t.nome} — {t.serie?.nome} ({t.anoLetivo})</option>)}
-        </select>
+      <div className="card mb-4" style={{ padding: 18 }}>
+        <div className="field" style={{ margin: 0 }}>
+          <label>Turma</label>
+          <select className="select" style={{ maxWidth: 380 }} value={selTurma} onChange={e => onTurmaChange(e.target.value)}>
+            <option value="">Selecione uma turma…</option>
+            {turmas.map(t => (
+              <option key={t.id} value={t.id}>{t.nome} — {t.serie?.nome} ({t.anoLetivo})</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {selTurma && (
-        <>
-          <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: 20 }}>
-            <button style={tabStyle(tab === 'aluno')} onClick={() => setTab('aluno')}>Alunos Matriculados</button>
-            <button style={tabStyle(tab === 'prof')} onClick={() => setTab('prof')}>Professores / Matérias</button>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="section-head">
+            <div>
+              <div className="t">{turmaSelecionada?.nome}</div>
+              <div className="s">{turmaSelecionada?.serie?.nome} · {turmaSelecionada?.anoLetivo}</div>
+            </div>
+            {erro && <span style={{ fontSize: 12, color: 'var(--bad)' }}>{erro}</span>}
+          </div>
+
+          <div className="drawer-tabs">
+            <button type="button" className={tab === 'aluno' ? 'on' : ''} onClick={() => setTab('aluno')}>
+              Alunos matriculados ({vincAT.length})
+            </button>
+            <button type="button" className={tab === 'prof' ? 'on' : ''} onClick={() => setTab('prof')}>
+              Professores / Matérias ({vincPTM.length})
+            </button>
           </div>
 
           {tab === 'aluno' && (
             <>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-                <select style={sel} value={addAlunoId} onChange={e => setAddAlunoId(e.target.value)}>
-                  <option value="">Selecionar aluno...</option>
-                  {alunos.filter(a => !vincAT.some(v => v.aluno?.id === a.id))
-                         .map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+              <div style={{ padding: 14, borderBottom: '1px solid var(--line)', display: 'flex', gap: 8 }}>
+                <select className="select" style={{ flex: 1 }} value={addAlunoId} onChange={e => setAddAlunoId(e.target.value)}>
+                  <option value="">Adicionar aluno…</option>
+                  {alunosDisponiveis.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
                 </select>
-                <Btn onClick={vincularAluno} disabled={!addAlunoId}><Plus size={14} />Matricular</Btn>
+                <button className="btn accent" type="button" onClick={vincularAluno} disabled={busy || !addAlunoId}>
+                  <Icon name="plus" /> Matricular
+                </button>
               </div>
-              <Table
-                columns={[
-                  { key: 'nome', label: 'Aluno', render: r => r.aluno?.nome },
-                  { key: 'matricula', label: 'Matrícula', render: r => r.aluno?.matricula || '—' },
-                  { key: 'acoes', label: 'Ações', render: r => (
-                    <Btn size="sm" variant="danger" onClick={() => desvincularAluno(r.aluno?.id)}>
-                      <Trash2 size={13} />Remover
-                    </Btn>
-                  )},
-                ]}
-                rows={vincAT}
-              />
+              {vincAT.length === 0 ? (
+                <div style={{ padding: '24px 18px', color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>Nenhum aluno matriculado.</div>
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Aluno</th>
+                      <th>Matrícula</th>
+                      <th style={{ width: 100 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vincAT.map((v, i) => (
+                      <tr key={v.aluno?.id ?? i}>
+                        <td className="strong">{v.aluno?.nome}</td>
+                        <td className="num">{v.aluno?.matricula || '—'}</td>
+                        <td>
+                          <button className="btn sm" type="button" style={{ color: 'var(--bad)' }} onClick={() => desvincularAluno(v.aluno?.id)} disabled={busy}>
+                            <Icon name="x" size={11} /> Remover
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </>
           )}
 
           {tab === 'prof' && (
             <>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                <select style={sel} value={addProfId} onChange={e => setAddProfId(e.target.value)}>
-                  <option value="">Selecionar professor...</option>
+              <div style={{ padding: 14, borderBottom: '1px solid var(--line)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <select className="select" style={{ flex: 1, minWidth: 180 }} value={addProfId} onChange={e => setAddProfId(e.target.value)}>
+                  <option value="">Professor…</option>
                   {professores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
-                <select style={sel} value={addMatId} onChange={e => setAddMatId(e.target.value)}>
-                  <option value="">Selecionar matéria...</option>
+                <select className="select" style={{ flex: 1, minWidth: 180 }} value={addMatId} onChange={e => setAddMatId(e.target.value)}>
+                  <option value="">Matéria…</option>
                   {materias.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
                 </select>
-                <Btn onClick={vincularPTM} disabled={!addProfId || !addMatId}><Plus size={14} />Vincular</Btn>
+                <button className="btn accent" type="button" onClick={vincularPTM} disabled={busy || !addProfId || !addMatId}>
+                  <Icon name="plus" /> Vincular
+                </button>
               </div>
-              <Table
-                columns={[
-                  { key: 'professor', label: 'Professor', render: r => r.professor?.nome },
-                  { key: 'materia', label: 'Matéria', render: r => r.materia?.nome },
-                  { key: 'acoes', label: 'Ações', render: r => (
-                    <Btn size="sm" variant="danger" onClick={() => desvincularPTM(r.id)}>
-                      <Trash2 size={13} />Remover
-                    </Btn>
-                  )},
-                ]}
-                rows={vincPTM}
-              />
+              {vincPTM.length === 0 ? (
+                <div style={{ padding: '24px 18px', color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>Nenhum professor vinculado.</div>
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Professor</th>
+                      <th>Matéria</th>
+                      <th style={{ width: 100 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vincPTM.map((v, i) => (
+                      <tr key={v.id ?? i}>
+                        <td className="strong">{v.professor?.nome}</td>
+                        <td>{v.materia?.nome}</td>
+                        <td>
+                          <button className="btn sm" type="button" style={{ color: 'var(--bad)' }} onClick={() => desvincularPTM(v.id)} disabled={busy}>
+                            <Icon name="x" size={11} /> Remover
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </>
           )}
-        </>
+        </div>
+      )}
+
+      {!selTurma && (
+        <div className="empty">
+          <div className="t">Selecione uma turma acima</div>
+          <div className="s">PARA GERENCIAR ALUNOS E PROFESSORES</div>
+        </div>
       )}
     </div>
   )

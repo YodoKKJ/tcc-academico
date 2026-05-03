@@ -1,38 +1,25 @@
 import { useEffect, useState } from 'react'
 import api from '../api.js'
-import PageHeader from '../components/PageHeader.jsx'
+import Icon from '../components/Icon.jsx'
 
-const sel = { padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13, background: '#fff', minWidth: 180 }
-
-function StatusBadge({ situacao }) {
-  const ok = situacao === 'APROVADO'
-  return (
-    <span style={{
-      padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-      background: ok ? '#f0fdf4' : '#fff1f2',
-      color: ok ? '#16a34a' : '#dc2626',
-    }}>{situacao}</span>
-  )
+const AVATAR_COLORS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8']
+const avatarColor = id => AVATAR_COLORS[Math.abs(Number(id) || 0) % AVATAR_COLORS.length]
+const iniciais = nome => {
+  const p = (nome || '').trim().split(/\s+/)
+  return ((p[0]?.[0] || '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '?'
 }
 
-function MediaBall({ valor }) {
-  if (valor == null) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
-  const n = Number(valor)
-  const color = n >= 7 ? '#16a34a' : n >= 5 ? '#f59e0b' : '#dc2626'
-  return (
-    <span style={{
-      display: 'inline-block', width: 36, height: 36, borderRadius: '50%',
-      background: color + '18', color, fontWeight: 700, fontSize: 13,
-      textAlign: 'center', lineHeight: '36px', border: `2px solid ${color}40`,
-    }}>{n.toFixed(1)}</span>
-  )
+function notaColor(n) {
+  if (n == null) return 'var(--ink-3)'
+  if (n >= 7) return 'var(--ok)'
+  if (n >= 5) return 'var(--warn)'
+  return 'var(--bad)'
 }
 
 export default function Boletim() {
   const [turmas, setTurmas] = useState([])
   const [alunos, setAlunos] = useState([])
   const [boletim, setBoletim] = useState([])
-
   const [selTurma, setSelTurma] = useState('')
   const [selAluno, setSelAluno] = useState('')
   const [loading, setLoading] = useState(false)
@@ -57,73 +44,93 @@ export default function Boletim() {
   const turmaInfo = turmas.find(t => t.id === Number(selTurma))
 
   return (
-    <div>
-      <PageHeader title="Boletim Escolar" subtitle="Consulte as médias, frequência e situação final do aluno" />
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">Lançamentos · Boletim</div>
+          <h1 className="page-title">Boletim Escolar</h1>
+          <div className="page-subtitle">Consulte médias, frequência e situação final do aluno</div>
+        </div>
+      </div>
 
-      <div style={{ background: '#fff', borderRadius: 10, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,.08)', marginBottom: 24 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>TURMA</label>
-            <select style={sel} value={selTurma} onChange={e => onTurmaChange(e.target.value)}>
-              <option value="">Selecione...</option>
+      <div className="card mb-4" style={{ padding: 18 }}>
+        <div className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="field" style={{ margin: 0, minWidth: 220 }}>
+            <label>Turma</label>
+            <select className="select" value={selTurma} onChange={e => onTurmaChange(e.target.value)}>
+              <option value="">Selecione…</option>
               {turmas.map(t => <option key={t.id} value={t.id}>{t.nome} ({t.serie?.nome})</option>)}
             </select>
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>ALUNO</label>
-            <select style={sel} value={selAluno} onChange={e => onAlunoChange(e.target.value)} disabled={!selTurma}>
-              <option value="">Selecione...</option>
+          <div className="field" style={{ margin: 0, minWidth: 260 }}>
+            <label>Aluno</label>
+            <select className="select" value={selAluno} onChange={e => onAlunoChange(e.target.value)} disabled={!selTurma}>
+              <option value="">Selecione…</option>
               {alunos.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
             </select>
           </div>
         </div>
       </div>
 
-      {loading && <div style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Carregando boletim...</div>}
+      {loading && (
+        <div className="empty">
+          <div className="t">Carregando boletim…</div>
+        </div>
+      )}
 
       {!loading && boletim.length > 0 && (
         <div>
-          <div style={{ marginBottom: 16, display: 'flex', gap: 16, alignItems: 'center' }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{alunoNome}</h2>
-            <span style={{ color: '#64748b', fontSize: 13 }}>{turmaInfo?.nome} — {turmaInfo?.serie?.nome} ({turmaInfo?.anoLetivo})</span>
+          <div className="row mb-4" style={{ gap: 14 }}>
+            <div className={`avatar ${avatarColor(selAluno)}`} style={{ width: 44, height: 44, fontSize: 15, flexShrink: 0 }}>
+              {iniciais(alunoNome)}
+            </div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', fontFamily: 'var(--font-display)' }}>{alunoNome}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
+                {turmaInfo?.nome} — {turmaInfo?.serie?.nome} ({turmaInfo?.anoLetivo})
+              </div>
+            </div>
           </div>
 
           {boletim.map(mat => (
-            <div key={mat.materiaId} style={{
-              background: '#fff', borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,.08)',
-              marginBottom: 16, overflow: 'hidden'
-            }}>
-              <div style={{
-                padding: '12px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-              }}>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>{mat.materiaNome}</span>
-                  <StatusBadge situacao={mat.situacao} />
+            <div key={mat.materiaId} className="card" style={{ marginBottom: 16, padding: 0, overflow: 'hidden' }}>
+              <div className="section-head">
+                <div className="row" style={{ gap: 12 }}>
+                  <div className="t">{mat.materiaNome}</div>
+                  <span className={`pill ${mat.situacao === 'APROVADO' ? 'ok' : 'err'}`}>
+                    <span className="dot" />
+                    {mat.situacao}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+                <div className="row" style={{ gap: 20 }}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Média Anual</div>
-                    <div style={{ marginTop: 4 }}><MediaBall valor={mat.mediaAnual} /></div>
+                    <div className="card-eyebrow" style={{ marginBottom: 2 }}>Média anual</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, lineHeight: 1, color: notaColor(mat.mediaAnual != null ? Number(mat.mediaAnual) : null) }}>
+                      {mat.mediaAnual != null ? Number(mat.mediaAnual).toFixed(1) : '—'}
+                    </div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Frequência</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: Number(mat.frequencia) >= 75 ? '#16a34a' : '#dc2626', marginTop: 4 }}>
+                    <div className="card-eyebrow" style={{ marginBottom: 2 }}>Frequência</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, lineHeight: 1, color: Number(mat.frequencia) >= 75 ? 'var(--ok)' : 'var(--bad)' }}>
                       {mat.frequencia}%
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', padding: '14px 20px', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', padding: 16, gap: 16 }}>
                 {mat.bimestres.map(bim => (
                   <div key={bim.numero}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 8 }}>{bim.numero}º BIMESTRE</div>
-                    <div style={{ marginBottom: 8 }}><MediaBall valor={bim.media} /></div>
+                    <div className="card-eyebrow" style={{ marginBottom: 8 }}>{bim.numero}º Bimestre</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, lineHeight: 1, color: notaColor(bim.media != null ? Number(bim.media) : null), marginBottom: 12 }}>
+                      {bim.media != null ? Number(bim.media).toFixed(1) : '—'}
+                    </div>
                     {bim.notas.map((n, i) => (
-                      <div key={i} style={{ fontSize: 11, color: '#64748b', display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid #f1f5f9' }}>
-                        <span>{n.descricao}</span>
-                        <span style={{ fontWeight: 600, color: '#334155' }}>{n.valor != null ? Number(n.valor).toFixed(1) : '—'}</span>
+                      <div key={i} className="row between" style={{ padding: '3px 0', borderBottom: '1px solid var(--line)', fontSize: 11 }}>
+                        <span style={{ color: 'var(--ink-3)' }}>{n.descricao}</span>
+                        <span className="num" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--ink-2)' }}>
+                          {n.valor != null ? Number(n.valor).toFixed(1) : '—'}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -135,8 +142,16 @@ export default function Boletim() {
       )}
 
       {!loading && selAluno && boletim.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8', fontSize: 13 }}>
-          Nenhuma matéria vinculada à turma ou sem avaliações cadastradas.
+        <div className="empty">
+          <div className="t">Sem dados para este aluno</div>
+          <div className="s">NENHUMA MATÉRIA VINCULADA OU SEM AVALIAÇÕES</div>
+        </div>
+      )}
+
+      {!selAluno && (
+        <div className="empty">
+          <div className="t">Selecione turma e aluno</div>
+          <div className="s">PARA VISUALIZAR O BOLETIM</div>
         </div>
       )}
     </div>

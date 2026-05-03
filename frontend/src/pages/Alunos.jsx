@@ -1,72 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import api from '../api.js'
-import PageHeader from '../components/PageHeader.jsx'
-import Table from '../components/Table.jsx'
-import Modal from '../components/Modal.jsx'
-import Btn from '../components/Btn.jsx'
+import Icon from '../components/Icon.jsx'
 
-const L = {
-  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 5, textTransform: 'uppercase', letterSpacing: .4 },
-  input: { width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13.5, boxSizing: 'border-box', marginBottom: 14 },
-}
-const row2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }
-
-function Form({ initial, onSave, onClose }) {
-  const [f, setF] = useState({
-    nome: '', matricula: '', dataNascimento: '', nomePai: '', nomeMae: '', telefone: '', email: '',
-    ...initial
-  })
-  const upd = k => e => setF(p => ({ ...p, [k]: e.target.value }))
-
-  const submit = async e => {
-    e.preventDefault()
-    const body = { ...f, dataNascimento: f.dataNascimento || null }
-    if (initial?.id) await api.put(`/alunos/${initial.id}`, body)
-    else await api.post('/alunos', body)
-    onSave()
-  }
-
-  return (
-    <form onSubmit={submit}>
-      <label style={L.label}>Nome Completo *</label>
-      <input style={L.input} value={f.nome} onChange={upd('nome')} required placeholder="Nome do aluno" />
-      <div style={row2}>
-        <div>
-          <label style={L.label}>Matrícula</label>
-          <input style={L.input} value={f.matricula} onChange={upd('matricula')} placeholder="Ex: 2024001" />
-        </div>
-        <div>
-          <label style={L.label}>Data de Nascimento</label>
-          <input style={L.input} type="date" value={f.dataNascimento ?? ''} onChange={upd('dataNascimento')} />
-        </div>
-      </div>
-      <div style={row2}>
-        <div>
-          <label style={L.label}>Nome do Pai</label>
-          <input style={L.input} value={f.nomePai ?? ''} onChange={upd('nomePai')} />
-        </div>
-        <div>
-          <label style={L.label}>Nome da Mãe</label>
-          <input style={L.input} value={f.nomeMae ?? ''} onChange={upd('nomeMae')} />
-        </div>
-      </div>
-      <div style={row2}>
-        <div>
-          <label style={L.label}>Telefone</label>
-          <input style={L.input} value={f.telefone ?? ''} onChange={upd('telefone')} />
-        </div>
-        <div>
-          <label style={L.label}>E-mail</label>
-          <input style={L.input} value={f.email ?? ''} onChange={upd('email')} type="email" />
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
-        <Btn>Salvar</Btn>
-      </div>
-    </form>
-  )
+const AVATAR_COLORS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8']
+const avatarColor = id => AVATAR_COLORS[Math.abs(Number(id) || 0) % AVATAR_COLORS.length]
+const iniciais = nome => {
+  const p = (nome || '').trim().split(/\s+/)
+  return ((p[0]?.[0] || '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '?'
 }
 
 export default function Alunos() {
@@ -78,46 +18,169 @@ export default function Alunos() {
   useEffect(() => { load() }, [])
 
   const del = async id => {
-    if (!confirm('Excluir aluno?')) return
+    if (!confirm('Excluir este aluno?')) return
     await api.delete(`/alunos/${id}`)
     load(busca)
   }
 
-  const cols = [
-    { key: 'id', label: '#', render: r => <span style={{ color: '#94a3b8', fontSize: 12 }}>{r.id}</span> },
-    { key: 'nome', label: 'Nome' },
-    { key: 'matricula', label: 'Matrícula', render: r => r.matricula || '—' },
-    { key: 'email', label: 'E-mail', render: r => r.email || '—' },
-    { key: 'telefone', label: 'Telefone', render: r => r.telefone || '—' },
-    { key: 'acoes', label: 'Ações', render: r => (
-      <div style={{ display: 'flex', gap: 6 }}>
-        <Btn size="sm" variant="ghost" onClick={() => setModal({ type: 'edit', item: r })}><Pencil size={13} />Editar</Btn>
-        <Btn size="sm" variant="danger" onClick={() => del(r.id)}><Trash2 size={13} /></Btn>
-      </div>
-    )},
-  ]
-
   return (
-    <div>
-      <PageHeader title="Alunos" subtitle="Cadastro de alunos da instituição"
-        action={<Btn onClick={() => setModal({ type: 'new' })}><Plus size={14} />Novo Aluno</Btn>} />
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: 320 }}>
-          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">Pessoas · Alunos</div>
+          <h1 className="page-title">Alunos</h1>
+          <div className="page-subtitle">{items.length} aluno{items.length !== 1 ? 's' : ''} cadastrado{items.length !== 1 ? 's' : ''}</div>
+        </div>
+        <button className="btn accent" type="button" onClick={() => setModal({ type: 'new' })}>
+          <Icon name="plus" /> Novo aluno
+        </button>
+      </div>
+
+      <div className="filter-row">
+        <div style={{ position: 'relative' }}>
+          <Icon name="search" size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)', pointerEvents: 'none' }} />
           <input
-            style={{ width: '100%', padding: '8px 10px 8px 32px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13, boxSizing: 'border-box' }}
-            placeholder="Buscar por nome..."
+            className="input"
+            style={{ paddingLeft: 32, width: 280 }}
+            placeholder="Buscar por nome…"
             value={busca}
             onChange={e => { setBusca(e.target.value); load(e.target.value) }}
           />
         </div>
       </div>
-      <Table columns={cols} rows={items} />
+
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {items.length === 0 ? (
+          <div className="empty">
+            <div className="t">Nenhum aluno cadastrado</div>
+            <div className="s">CLIQUE EM "NOVO ALUNO" PARA COMEÇAR</div>
+          </div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Aluno</th>
+                <th>Matrícula</th>
+                <th>E-mail</th>
+                <th>Telefone</th>
+                <th style={{ width: 80 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(r => (
+                <tr key={r.id}>
+                  <td>
+                    <span className="row">
+                      <span className={`avatar sm ${avatarColor(r.id)}`}>{iniciais(r.nome)}</span>
+                      <span className="strong">{r.nome}</span>
+                    </span>
+                  </td>
+                  <td className="num">{r.matricula || '—'}</td>
+                  <td>{r.email || '—'}</td>
+                  <td>{r.telefone || '—'}</td>
+                  <td>
+                    <span className="row">
+                      <button className="icon-btn" type="button" title="Editar" onClick={() => setModal({ type: 'edit', item: r })}>
+                        <Icon name="edit" />
+                      </button>
+                      <button className="icon-btn" type="button" title="Excluir" style={{ color: 'var(--bad)' }} onClick={() => del(r.id)}>
+                        <Icon name="trash" />
+                      </button>
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       {modal && (
-        <Modal title={modal.type === 'new' ? 'Novo Aluno' : 'Editar Aluno'} onClose={() => setModal(null)} width={560}>
-          <Form initial={modal.item} onSave={() => { setModal(null); load(busca) }} onClose={() => setModal(null)} />
-        </Modal>
+        <AlunoModal
+          item={modal.item}
+          onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); load(busca) }}
+        />
       )}
+    </div>
+  )
+}
+
+function AlunoModal({ item, onClose, onSaved }) {
+  const isEdit = !!item
+  const [f, setF] = useState({
+    nome: '', matricula: '', dataNascimento: '', nomePai: '', nomeMae: '', telefone: '', email: '',
+    ...item,
+  })
+  const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState('')
+  const upd = k => e => setF(p => ({ ...p, [k]: e.target.value }))
+
+  const submit = async e => {
+    e.preventDefault()
+    setErro('')
+    if (!f.nome.trim()) return setErro('Informe o nome.')
+    setSaving(true)
+    try {
+      const body = { ...f, dataNascimento: f.dataNascimento || null }
+      if (isEdit) await api.put(`/alunos/${item.id}`, body)
+      else await api.post('/alunos', body)
+      onSaved()
+    } catch {
+      setErro('Erro ao salvar.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <form className="modal" onClick={e => e.stopPropagation()} onSubmit={submit}>
+        <div className="modal-header">
+          <div>
+            <div className="card-eyebrow">{isEdit ? 'Editar aluno' : 'Novo aluno'}</div>
+            <div className="modal-title">{isEdit ? item.nome : 'Cadastrar aluno'}</div>
+          </div>
+          <button className="icon-btn" type="button" onClick={onClose}><Icon name="x" /></button>
+        </div>
+        <div className="modal-body">
+          <div className="field" style={{ gridColumn: 'span 2' }}>
+            <label>Nome completo *</label>
+            <input className="input" value={f.nome} onChange={upd('nome')} required placeholder="Nome do aluno" autoFocus />
+          </div>
+          <div className="form-grid">
+            <div className="field">
+              <label>Matrícula</label>
+              <input className="input" value={f.matricula} onChange={upd('matricula')} placeholder="Ex: 2024001" />
+            </div>
+            <div className="field">
+              <label>Data de nascimento</label>
+              <input className="input" type="date" value={f.dataNascimento ?? ''} onChange={upd('dataNascimento')} />
+            </div>
+            <div className="field">
+              <label>Nome do pai</label>
+              <input className="input" value={f.nomePai ?? ''} onChange={upd('nomePai')} />
+            </div>
+            <div className="field">
+              <label>Nome da mãe</label>
+              <input className="input" value={f.nomeMae ?? ''} onChange={upd('nomeMae')} />
+            </div>
+            <div className="field">
+              <label>Telefone</label>
+              <input className="input" value={f.telefone ?? ''} onChange={upd('telefone')} />
+            </div>
+            <div className="field">
+              <label>E-mail</label>
+              <input className="input" type="email" value={f.email ?? ''} onChange={upd('email')} />
+            </div>
+          </div>
+          {erro && <div style={{ color: 'var(--bad)', fontSize: 12, marginTop: 4 }}>{erro}</div>}
+        </div>
+        <div className="modal-footer">
+          <button className="btn" type="button" onClick={onClose}>Cancelar</button>
+          <button className="btn accent" type="submit" disabled={saving}>{saving ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Criar aluno'}</button>
+        </div>
+      </form>
     </div>
   )
 }
