@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Save } from 'lucide-react'
 import api from '../api.js'
-import PageHeader from '../components/PageHeader.jsx'
-import Btn from '../components/Btn.jsx'
-
-const sel = { padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13, background: '#fff', minWidth: 180 }
+import Icon from '../components/Icon.jsx'
 
 export default function Notas() {
   const [turmas, setTurmas] = useState([])
@@ -12,7 +8,6 @@ export default function Notas() {
   const [avaliacoes, setAvaliacoes] = useState([])
   const [alunos, setAlunos] = useState([])
   const [notasMap, setNotasMap] = useState({})
-
   const [selTurma, setSelTurma] = useState('')
   const [selMateria, setSelMateria] = useState('')
   const [selAval, setSelAval] = useState('')
@@ -49,40 +44,48 @@ export default function Notas() {
     setSaving(true); setMsg('')
     for (const [alunoId, valor] of Object.entries(notasMap)) {
       if (valor !== '' && valor !== undefined) {
-        await api.post('/notas/lancar', { avaliacaoId: Number(selAval), alunoId: Number(alunoId), valor: Number(valor) })
+        await api.post('/notas/lancar', {
+          avaliacaoId: Number(selAval), alunoId: Number(alunoId), valor: Number(valor),
+        })
       }
     }
     setSaving(false)
-    setMsg('Notas salvas com sucesso!')
+    setMsg('Notas salvas!')
     setTimeout(() => setMsg(''), 3000)
   }
 
   const avalSelected = avaliacoes.find(a => a.id === Number(selAval))
 
   return (
-    <div>
-      <PageHeader title="Lançamento de Notas" subtitle="Registre as notas das avaliações por turma e matéria" />
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">Lançamentos · Notas</div>
+          <h1 className="page-title">Lançamento de Notas</h1>
+          <div className="page-subtitle">Registre as notas por turma, matéria e avaliação</div>
+        </div>
+      </div>
 
-      <div style={{ background: '#fff', borderRadius: 10, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,.08)', marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>TURMA</label>
-            <select style={sel} value={selTurma} onChange={e => onTurmaChange(e.target.value)}>
-              <option value="">Selecione...</option>
+      <div className="card mb-4" style={{ padding: 18 }}>
+        <div className="row" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="field" style={{ margin: 0, minWidth: 200 }}>
+            <label>Turma</label>
+            <select className="select" value={selTurma} onChange={e => onTurmaChange(e.target.value)}>
+              <option value="">Selecione…</option>
               {turmas.map(t => <option key={t.id} value={t.id}>{t.nome} ({t.serie?.nome})</option>)}
             </select>
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>MATÉRIA</label>
-            <select style={sel} value={selMateria} onChange={e => onMateriaChange(e.target.value)} disabled={!selTurma}>
-              <option value="">Selecione...</option>
+          <div className="field" style={{ margin: 0, minWidth: 180 }}>
+            <label>Matéria</label>
+            <select className="select" value={selMateria} onChange={e => onMateriaChange(e.target.value)} disabled={!selTurma}>
+              <option value="">Selecione…</option>
               {materias.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </select>
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>AVALIAÇÃO</label>
-            <select style={sel} value={selAval} onChange={e => onAvalChange(e.target.value)} disabled={!selMateria}>
-              <option value="">Selecione...</option>
+          <div className="field" style={{ margin: 0, minWidth: 220 }}>
+            <label>Avaliação</label>
+            <select className="select" value={selAval} onChange={e => onAvalChange(e.target.value)} disabled={!selMateria}>
+              <option value="">Selecione…</option>
               {avaliacoes.map(a => <option key={a.id} value={a.id}>{a.descricao || a.tipo} — {a.bimestre}º Bim</option>)}
             </select>
           </div>
@@ -90,36 +93,39 @@ export default function Notas() {
       </div>
 
       {selAval && alunos.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,.08)' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="section-head">
             <div>
-              <span style={{ fontWeight: 600, color: '#1e293b', fontSize: 14 }}>
-                {avalSelected?.descricao || avalSelected?.tipo} — {avalSelected?.bimestre}º Bimestre
-              </span>
-              <span style={{ marginLeft: 12, color: '#64748b', fontSize: 12 }}>Peso: {avalSelected?.peso}</span>
+              <div className="t">{avalSelected?.descricao || avalSelected?.tipo} — {avalSelected?.bimestre}º Bimestre</div>
+              <div className="s">Peso: {avalSelected?.peso} · {alunos.length} alunos</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {msg && <span style={{ color: '#22c55e', fontSize: 13, fontWeight: 500 }}>{msg}</span>}
-              <Btn onClick={save} disabled={saving}><Save size={14} />{saving ? 'Salvando...' : 'Salvar Notas'}</Btn>
+            <div className="row" style={{ gap: 10 }}>
+              {msg && <span style={{ color: 'var(--ok)', fontSize: 12, fontWeight: 500, fontFamily: 'var(--font-mono)' }}>{msg}</span>}
+              <button className="btn accent" type="button" onClick={save} disabled={saving}>
+                <Icon name="check" size={13} /> {saving ? 'Salvando…' : 'Salvar notas'}
+              </button>
             </div>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="table">
             <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Aluno</th>
-                <th style={{ padding: '10px 20px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', width: 120 }}>Nota (0–10)</th>
+              <tr>
+                <th>Aluno</th>
+                <th style={{ width: 140, textAlign: 'center' }}>Nota (0 – 10)</th>
               </tr>
             </thead>
             <tbody>
               {alunos.map(aluno => (
-                <tr key={aluno.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '10px 20px', fontSize: 13.5, color: '#334155' }}>{aluno.nome}</td>
-                  <td style={{ padding: '8px 20px', textAlign: 'center' }}>
+                <tr key={aluno.id}>
+                  <td className="strong">{aluno.nome}</td>
+                  <td style={{ textAlign: 'center' }}>
                     <input
-                      type="number" min="0" max="10" step="0.1"
+                      type="number"
+                      min="0" max="10" step="0.1"
+                      className="input"
+                      style={{ width: 90, textAlign: 'center' }}
                       value={notasMap[aluno.id] ?? ''}
                       onChange={e => setNotasMap(p => ({ ...p, [aluno.id]: e.target.value }))}
-                      style={{ width: 80, padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 6, textAlign: 'center', fontSize: 14 }}
+                      placeholder="—"
                     />
                   </td>
                 </tr>
@@ -130,8 +136,16 @@ export default function Notas() {
       )}
 
       {selAval && alunos.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8', fontSize: 13 }}>
-          Nenhum aluno matriculado nesta turma.
+        <div className="empty">
+          <div className="t">Nenhum aluno matriculado nesta turma</div>
+          <div className="s">ACESSE VÍNCULOS PARA MATRICULAR ALUNOS</div>
+        </div>
+      )}
+
+      {!selAval && (
+        <div className="empty">
+          <div className="t">Selecione turma, matéria e avaliação</div>
+          <div className="s">PARA LANÇAR AS NOTAS</div>
         </div>
       )}
     </div>

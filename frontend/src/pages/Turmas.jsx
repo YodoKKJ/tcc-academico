@@ -1,48 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
 import api from '../api.js'
-import PageHeader from '../components/PageHeader.jsx'
-import Table from '../components/Table.jsx'
-import Modal from '../components/Modal.jsx'
-import Btn from '../components/Btn.jsx'
+import Icon from '../components/Icon.jsx'
 
-const L = {
-  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 5, textTransform: 'uppercase', letterSpacing: .4 },
-  input: { width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13.5, boxSizing: 'border-box', marginBottom: 14 },
-  select: { width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13.5, boxSizing: 'border-box', marginBottom: 14, background: '#fff' },
-}
-
-function Form({ initial, series, onSave, onClose }) {
-  const [nome, setNome] = useState(initial?.nome ?? '')
-  const [serieId, setSerieId] = useState(initial?.serie?.id ?? '')
-  const [anoLetivo, setAnoLetivo] = useState(initial?.anoLetivo ?? new Date().getFullYear())
-
-  const submit = async e => {
-    e.preventDefault()
-    const body = { nome, serieId: Number(serieId), anoLetivo: Number(anoLetivo) }
-    if (initial?.id) await api.put(`/turmas/${initial.id}`, body)
-    else await api.post('/turmas', body)
-    onSave()
-  }
-
-  return (
-    <form onSubmit={submit}>
-      <label style={L.label}>Nome da Turma *</label>
-      <input style={L.input} value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: 9A" required />
-      <label style={L.label}>Série *</label>
-      <select style={L.select} value={serieId} onChange={e => setSerieId(e.target.value)} required>
-        <option value="">Selecione...</option>
-        {series.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-      </select>
-      <label style={L.label}>Ano Letivo *</label>
-      <input style={L.input} type="number" value={anoLetivo} onChange={e => setAnoLetivo(e.target.value)} required />
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
-        <Btn>Salvar</Btn>
-      </div>
-    </form>
-  )
-}
+const ANO_ATUAL = new Date().getFullYear()
+const AVATAR_COLORS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8']
+const avatarColor = id => AVATAR_COLORS[Math.abs(Number(id) || 0) % AVATAR_COLORS.length]
+const turmaInitial = t => (t?.nome || '?').trim()[0]?.toUpperCase() || '?'
 
 export default function Turmas() {
   const [items, setItems] = useState([])
@@ -56,34 +19,144 @@ export default function Turmas() {
   }, [])
 
   const del = async id => {
-    if (!confirm('Excluir turma?')) return
+    if (!confirm('Excluir esta turma?')) return
     await api.delete(`/turmas/${id}`)
     load()
   }
 
-  const cols = [
-    { key: 'id', label: '#', render: r => <span style={{ color: '#94a3b8', fontSize: 12 }}>{r.id}</span> },
-    { key: 'nome', label: 'Turma' },
-    { key: 'serie', label: 'Série', render: r => r.serie?.nome },
-    { key: 'anoLetivo', label: 'Ano Letivo' },
-    { key: 'acoes', label: 'Ações', render: r => (
-      <div style={{ display: 'flex', gap: 6 }}>
-        <Btn size="sm" variant="ghost" onClick={() => setModal({ type: 'edit', item: r })}><Pencil size={13} />Editar</Btn>
-        <Btn size="sm" variant="danger" onClick={() => del(r.id)}><Trash2 size={13} /></Btn>
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">Acadêmico · Turmas</div>
+          <h1 className="page-title">Turmas</h1>
+          <div className="page-subtitle">{items.length} turma{items.length !== 1 ? 's' : ''} cadastrada{items.length !== 1 ? 's' : ''}</div>
+        </div>
+        <button className="btn accent" type="button" onClick={() => setModal({ type: 'new' })}>
+          <Icon name="plus" /> Nova turma
+        </button>
       </div>
-    )},
-  ]
+
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {items.length === 0 ? (
+          <div className="empty">
+            <div className="t">Nenhuma turma cadastrada</div>
+            <div className="s">CRIE SÉRIES PRIMEIRO, DEPOIS AS TURMAS</div>
+          </div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Turma</th>
+                <th>Série</th>
+                <th>Ano letivo</th>
+                <th style={{ width: 80 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(r => (
+                <tr key={r.id}>
+                  <td>
+                    <span className="row">
+                      <span className={`avatar sm ${avatarColor(r.id)}`}>{turmaInitial(r)}</span>
+                      <span className="strong">{r.nome}</span>
+                    </span>
+                  </td>
+                  <td>{r.serie?.nome || '—'}</td>
+                  <td className="num">{r.anoLetivo || '—'}</td>
+                  <td>
+                    <span className="row">
+                      <button className="icon-btn" type="button" title="Editar" onClick={() => setModal({ type: 'edit', item: r })}>
+                        <Icon name="edit" />
+                      </button>
+                      <button className="icon-btn" type="button" title="Excluir" style={{ color: 'var(--bad)' }} onClick={() => del(r.id)}>
+                        <Icon name="trash" />
+                      </button>
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <TurmaModal
+          item={modal.item}
+          series={series}
+          onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); load() }}
+        />
+      )}
+    </div>
+  )
+}
+
+function TurmaModal({ item, series, onClose, onSaved }) {
+  const isEdit = !!item
+  const [f, setF] = useState({
+    nome: item?.nome || '',
+    serieId: item?.serie?.id || '',
+    anoLetivo: item?.anoLetivo || ANO_ATUAL,
+  })
+  const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState('')
+  const set = (k, v) => setF(p => ({ ...p, [k]: v }))
+
+  const submit = async e => {
+    e.preventDefault()
+    setErro('')
+    if (!f.nome.trim()) return setErro('Informe o nome.')
+    if (!f.serieId) return setErro('Selecione a série.')
+    setSaving(true)
+    try {
+      const payload = { nome: f.nome.trim(), serieId: Number(f.serieId), anoLetivo: Number(f.anoLetivo) }
+      if (isEdit) await api.put(`/turmas/${item.id}`, payload)
+      else await api.post('/turmas', payload)
+      onSaved()
+    } catch {
+      setErro('Erro ao salvar.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <div>
-      <PageHeader title="Turmas" subtitle="Grupos de alunos por série e ano letivo"
-        action={<Btn onClick={() => setModal({ type: 'new' })}><Plus size={14} />Nova Turma</Btn>} />
-      <Table columns={cols} rows={items} />
-      {modal && (
-        <Modal title={modal.type === 'new' ? 'Nova Turma' : 'Editar Turma'} onClose={() => setModal(null)}>
-          <Form initial={modal.item} series={series} onSave={() => { setModal(null); load() }} onClose={() => setModal(null)} />
-        </Modal>
-      )}
+    <div className="modal-overlay" onClick={onClose}>
+      <form className="modal" onClick={e => e.stopPropagation()} onSubmit={submit}>
+        <div className="modal-header">
+          <div>
+            <div className="card-eyebrow">{isEdit ? 'Editar turma' : 'Nova turma'}</div>
+            <div className="modal-title">{isEdit ? item.nome : 'Cadastrar turma'}</div>
+          </div>
+          <button className="icon-btn" type="button" onClick={onClose}><Icon name="x" /></button>
+        </div>
+        <div className="modal-body">
+          <div className="field">
+            <label>Nome da turma *</label>
+            <input className="input" value={f.nome} onChange={e => set('nome', e.target.value)} required placeholder="Ex: 3º A" autoFocus />
+          </div>
+          <div className="form-grid">
+            <div className="field">
+              <label>Série *</label>
+              <select className="select" value={f.serieId} onChange={e => set('serieId', e.target.value)} required>
+                <option value="">Selecionar…</option>
+                {series.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Ano letivo *</label>
+              <input className="input" type="number" value={f.anoLetivo} onChange={e => set('anoLetivo', e.target.value)} required />
+            </div>
+          </div>
+          {erro && <div style={{ color: 'var(--bad)', fontSize: 12, marginTop: 4 }}>{erro}</div>}
+        </div>
+        <div className="modal-footer">
+          <button className="btn" type="button" onClick={onClose}>Cancelar</button>
+          <button className="btn accent" type="submit" disabled={saving}>{saving ? 'Salvando…' : isEdit ? 'Salvar alterações' : 'Criar turma'}</button>
+        </div>
+      </form>
     </div>
   )
 }

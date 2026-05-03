@@ -1,35 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
 import api from '../api.js'
-import PageHeader from '../components/PageHeader.jsx'
-import Table from '../components/Table.jsx'
-import Modal from '../components/Modal.jsx'
-import Btn from '../components/Btn.jsx'
-
-const L = {
-  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 5, textTransform: 'uppercase', letterSpacing: .4 },
-  input: { width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13.5, boxSizing: 'border-box' },
-}
-
-function Form({ initial, onSave, onClose }) {
-  const [nome, setNome] = useState(initial?.nome ?? '')
-  const submit = async e => {
-    e.preventDefault()
-    if (initial?.id) await api.put(`/materias/${initial.id}`, { nome })
-    else await api.post('/materias', { nome })
-    onSave()
-  }
-  return (
-    <form onSubmit={submit}>
-      <label style={L.label}>Nome da Matéria *</label>
-      <input style={L.input} value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Matemática" required />
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-        <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
-        <Btn>Salvar</Btn>
-      </div>
-    </form>
-  )
-}
+import Icon from '../components/Icon.jsx'
 
 export default function Materias() {
   const [items, setItems] = useState([])
@@ -39,32 +10,116 @@ export default function Materias() {
   useEffect(() => { load() }, [])
 
   const del = async id => {
-    if (!confirm('Excluir matéria?')) return
+    if (!confirm('Excluir esta matéria?')) return
     await api.delete(`/materias/${id}`)
     load()
   }
 
-  const cols = [
-    { key: 'id', label: '#', render: r => <span style={{ color: '#94a3b8', fontSize: 12 }}>{r.id}</span> },
-    { key: 'nome', label: 'Nome' },
-    { key: 'acoes', label: 'Ações', render: r => (
-      <div style={{ display: 'flex', gap: 6 }}>
-        <Btn size="sm" variant="ghost" onClick={() => setModal({ type: 'edit', item: r })}><Pencil size={13} />Editar</Btn>
-        <Btn size="sm" variant="danger" onClick={() => del(r.id)}><Trash2 size={13} /></Btn>
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">Acadêmico · Matérias</div>
+          <h1 className="page-title">Matérias</h1>
+          <div className="page-subtitle">Disciplinas do currículo escolar</div>
+        </div>
+        <button className="btn accent" type="button" onClick={() => setModal({ type: 'new' })}>
+          <Icon name="plus" /> Nova matéria
+        </button>
       </div>
-    )},
-  ]
+
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {items.length === 0 ? (
+          <div className="empty">
+            <div className="t">Nenhuma matéria cadastrada</div>
+            <div className="s">EX: MATEMÁTICA, PORTUGUÊS, CIÊNCIAS</div>
+          </div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: 60 }}>#</th>
+                <th>Nome</th>
+                <th style={{ width: 80 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(r => (
+                <tr key={r.id}>
+                  <td className="num" style={{ color: 'var(--ink-4)' }}>{r.id}</td>
+                  <td className="strong">{r.nome}</td>
+                  <td>
+                    <span className="row">
+                      <button className="icon-btn" type="button" title="Editar" onClick={() => setModal({ type: 'edit', item: r })}>
+                        <Icon name="edit" />
+                      </button>
+                      <button className="icon-btn" type="button" title="Excluir" style={{ color: 'var(--bad)' }} onClick={() => del(r.id)}>
+                        <Icon name="trash" />
+                      </button>
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <MateriaModal
+          item={modal.item}
+          onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); load() }}
+        />
+      )}
+    </div>
+  )
+}
+
+function MateriaModal({ item, onClose, onSaved }) {
+  const isEdit = !!item
+  const [nome, setNome] = useState(item?.nome ?? '')
+  const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState('')
+
+  const submit = async e => {
+    e.preventDefault()
+    setErro('')
+    if (!nome.trim()) return setErro('Informe o nome.')
+    setSaving(true)
+    try {
+      if (isEdit) await api.put(`/materias/${item.id}`, { nome })
+      else await api.post('/materias', { nome })
+      onSaved()
+    } catch {
+      setErro('Erro ao salvar.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <div>
-      <PageHeader title="Matérias" subtitle="Disciplinas do currículo escolar"
-        action={<Btn onClick={() => setModal({ type: 'new' })}><Plus size={14} />Nova Matéria</Btn>} />
-      <Table columns={cols} rows={items} />
-      {modal && (
-        <Modal title={modal.type === 'new' ? 'Nova Matéria' : 'Editar Matéria'} onClose={() => setModal(null)}>
-          <Form initial={modal.item} onSave={() => { setModal(null); load() }} onClose={() => setModal(null)} />
-        </Modal>
-      )}
+    <div className="modal-overlay" onClick={onClose}>
+      <form className="modal" onClick={e => e.stopPropagation()} onSubmit={submit} style={{ width: 420 }}>
+        <div className="modal-header">
+          <div>
+            <div className="card-eyebrow">{isEdit ? 'Editar matéria' : 'Nova matéria'}</div>
+            <div className="modal-title">{isEdit ? item.nome : 'Cadastrar matéria'}</div>
+          </div>
+          <button className="icon-btn" type="button" onClick={onClose}><Icon name="x" /></button>
+        </div>
+        <div className="modal-body">
+          <div className="field">
+            <label>Nome da matéria *</label>
+            <input className="input" value={nome} onChange={e => setNome(e.target.value)} required placeholder="Ex: Matemática" autoFocus />
+          </div>
+          {erro && <div style={{ color: 'var(--bad)', fontSize: 12 }}>{erro}</div>}
+        </div>
+        <div className="modal-footer">
+          <button className="btn" type="button" onClick={onClose}>Cancelar</button>
+          <button className="btn accent" type="submit" disabled={saving}>{saving ? 'Salvando…' : isEdit ? 'Salvar' : 'Criar matéria'}</button>
+        </div>
+      </form>
     </div>
   )
 }

@@ -1,82 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
 import api from '../api.js'
-import PageHeader from '../components/PageHeader.jsx'
-import Table from '../components/Table.jsx'
-import Modal from '../components/Modal.jsx'
-import Btn from '../components/Btn.jsx'
+import Icon from '../components/Icon.jsx'
 
-const L = {
-  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 5, textTransform: 'uppercase', letterSpacing: .4 },
-  input: { width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13.5, boxSizing: 'border-box', marginBottom: 14 },
-  select: { width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13.5, boxSizing: 'border-box', marginBottom: 14, background: '#fff' },
-}
-
-const TIPO_COLOR = { PROVA: '#3b82f6', TRABALHO: '#8b5cf6', SIMULADO: '#f59e0b', RECUPERACAO: '#ef4444' }
-
-function Form({ turmas, materias, onSave, onClose }) {
-  const [f, setF] = useState({ turmaId: '', materiaId: '', tipo: 'PROVA', descricao: '', dataAplicacao: '', peso: '1', bimestre: '1' })
-  const upd = k => e => setF(p => ({ ...p, [k]: e.target.value }))
-
-  const submit = async e => {
-    e.preventDefault()
-    await api.post('/avaliacoes', { ...f, turmaId: Number(f.turmaId), materiaId: Number(f.materiaId), peso: Number(f.peso), bimestre: Number(f.bimestre) })
-    onSave()
-  }
-
-  return (
-    <form onSubmit={submit}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>
-          <label style={L.label}>Turma *</label>
-          <select style={L.select} value={f.turmaId} onChange={upd('turmaId')} required>
-            <option value="">Selecione...</option>
-            {turmas.map(t => <option key={t.id} value={t.id}>{t.nome} ({t.serie?.nome})</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={L.label}>Matéria *</label>
-          <select style={L.select} value={f.materiaId} onChange={upd('materiaId')} required>
-            <option value="">Selecione...</option>
-            {materias.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-          </select>
-        </div>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>
-          <label style={L.label}>Tipo *</label>
-          <select style={L.select} value={f.tipo} onChange={upd('tipo')}>
-            <option value="PROVA">Prova</option>
-            <option value="TRABALHO">Trabalho</option>
-            <option value="SIMULADO">Simulado</option>
-            <option value="RECUPERACAO">Recuperação</option>
-          </select>
-        </div>
-        <div>
-          <label style={L.label}>Bimestre *</label>
-          <select style={L.select} value={f.bimestre} onChange={upd('bimestre')}>
-            {[1,2,3,4].map(b => <option key={b} value={b}>{b}º Bimestre</option>)}
-          </select>
-        </div>
-      </div>
-      <label style={L.label}>Descrição</label>
-      <input style={L.input} value={f.descricao} onChange={upd('descricao')} placeholder="Ex: Prova de Álgebra" />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>
-          <label style={L.label}>Data de Aplicação *</label>
-          <input style={L.input} type="date" value={f.dataAplicacao} onChange={upd('dataAplicacao')} required />
-        </div>
-        <div>
-          <label style={L.label}>Peso *</label>
-          <input style={L.input} type="number" min="0.1" max="10" step="0.1" value={f.peso} onChange={upd('peso')} required />
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <Btn variant="ghost" onClick={onClose}>Cancelar</Btn>
-        <Btn>Salvar</Btn>
-      </div>
-    </form>
-  )
+const TIPO_PILL = {
+  PROVA:      { cls: 'info',  label: 'Prova' },
+  TRABALHO:   { cls: 'ok',    label: 'Trabalho' },
+  SIMULADO:   { cls: 'warn',  label: 'Simulado' },
+  RECUPERACAO:{ cls: 'bad',   label: 'Recuperação' },
 }
 
 export default function Avaliacoes() {
@@ -97,46 +27,188 @@ export default function Avaliacoes() {
   }, [])
 
   const del = async id => {
-    if (!confirm('Excluir avaliação?')) return
+    if (!confirm('Excluir esta avaliação?')) return
     await api.delete(`/avaliacoes/${id}`)
     load(filtroTurma)
   }
 
-  const cols = [
-    { key: 'desc', label: 'Descrição', render: r => r.descricao || r.tipo },
-    { key: 'tipo', label: 'Tipo', render: r => (
-      <span style={{ padding: '2px 8px', borderRadius: 4, background: TIPO_COLOR[r.tipo] + '22', color: TIPO_COLOR[r.tipo], fontSize: 11, fontWeight: 600 }}>
-        {r.tipo}
-      </span>
-    )},
-    { key: 'turma', label: 'Turma', render: r => `${r.turma?.nome} (${r.turma?.serie?.nome})` },
-    { key: 'materia', label: 'Matéria', render: r => r.materia?.nome },
-    { key: 'bimestre', label: 'Bimestre', render: r => `${r.bimestre}º` },
-    { key: 'data', label: 'Data', render: r => r.dataAplicacao },
-    { key: 'peso', label: 'Peso' },
-    { key: 'acoes', label: '', render: r => (
-      <Btn size="sm" variant="danger" onClick={() => del(r.id)}><Trash2 size={13} /></Btn>
-    )},
-  ]
-
   return (
-    <div>
-      <PageHeader title="Avaliações" subtitle="Provas, trabalhos e atividades avaliativas"
-        action={<Btn onClick={() => setModal(true)}><Plus size={14} />Nova Avaliação</Btn>} />
-      <div style={{ marginBottom: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
-        <span style={{ fontSize: 13, color: '#475569', fontWeight: 600 }}>Filtrar por turma:</span>
-        <select style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13, background: '#fff' }}
-          value={filtroTurma} onChange={e => { setFiltroTurma(e.target.value); load(e.target.value) }}>
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <div className="page-eyebrow">Lançamentos · Avaliações</div>
+          <h1 className="page-title">Avaliações</h1>
+          <div className="page-subtitle">Provas, trabalhos e atividades avaliativas</div>
+        </div>
+        <button className="btn accent" type="button" onClick={() => setModal(true)}>
+          <Icon name="plus" /> Nova avaliação
+        </button>
+      </div>
+
+      <div className="filter-row">
+        <select
+          className="select"
+          style={{ width: 'auto', maxWidth: 260 }}
+          value={filtroTurma}
+          onChange={e => { setFiltroTurma(e.target.value); load(e.target.value) }}
+        >
           <option value="">Todas as turmas</option>
           {turmas.map(t => <option key={t.id} value={t.id}>{t.nome} ({t.serie?.nome})</option>)}
         </select>
       </div>
-      <Table columns={cols} rows={items} />
+
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {items.length === 0 ? (
+          <div className="empty">
+            <div className="t">Nenhuma avaliação encontrada</div>
+            <div className="s">CRIE A PRIMEIRA AVALIAÇÃO ACIMA</div>
+          </div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Descrição</th>
+                <th>Tipo</th>
+                <th>Turma</th>
+                <th>Matéria</th>
+                <th>Bimestre</th>
+                <th>Data</th>
+                <th>Peso</th>
+                <th style={{ width: 60 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(r => {
+                const tp = TIPO_PILL[r.tipo] || { cls: '', label: r.tipo }
+                return (
+                  <tr key={r.id}>
+                    <td className="strong">{r.descricao || r.tipo}</td>
+                    <td>
+                      <span className={`pill ${tp.cls}`}>
+                        <span className="dot" />{tp.label}
+                      </span>
+                    </td>
+                    <td>{r.turma?.nome} <span style={{ color: 'var(--ink-4)', fontSize: 11 }}>({r.turma?.serie?.nome})</span></td>
+                    <td>{r.materia?.nome}</td>
+                    <td className="num">{r.bimestre}º</td>
+                    <td className="num">{r.dataAplicacao || '—'}</td>
+                    <td className="num">{r.peso}</td>
+                    <td>
+                      <button className="icon-btn" type="button" title="Excluir" style={{ color: 'var(--bad)' }} onClick={() => del(r.id)}>
+                        <Icon name="trash" />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       {modal && (
-        <Modal title="Nova Avaliação" onClose={() => setModal(false)} width={600}>
-          <Form turmas={turmas} materias={materias} onSave={() => { setModal(false); load(filtroTurma) }} onClose={() => setModal(false)} />
-        </Modal>
+        <AvaliacaoModal
+          turmas={turmas}
+          materias={materias}
+          onClose={() => setModal(false)}
+          onSaved={() => { setModal(false); load(filtroTurma) }}
+        />
       )}
+    </div>
+  )
+}
+
+function AvaliacaoModal({ turmas, materias, onClose, onSaved }) {
+  const [f, setF] = useState({
+    turmaId: '', materiaId: '', tipo: 'PROVA', descricao: '',
+    dataAplicacao: '', peso: '1', bimestre: '1',
+  })
+  const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState('')
+  const upd = k => e => setF(p => ({ ...p, [k]: e.target.value }))
+
+  const submit = async e => {
+    e.preventDefault()
+    setErro('')
+    if (!f.turmaId || !f.materiaId) return setErro('Selecione turma e matéria.')
+    setSaving(true)
+    try {
+      await api.post('/avaliacoes', {
+        ...f,
+        turmaId: Number(f.turmaId),
+        materiaId: Number(f.materiaId),
+        peso: Number(f.peso),
+        bimestre: Number(f.bimestre),
+      })
+      onSaved()
+    } catch (err) {
+      setErro(err.response?.data || 'Erro ao salvar.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <form className="modal" onClick={e => e.stopPropagation()} onSubmit={submit} style={{ width: 620 }}>
+        <div className="modal-header">
+          <div>
+            <div className="card-eyebrow">Nova avaliação</div>
+            <div className="modal-title">Cadastrar avaliação</div>
+          </div>
+          <button className="icon-btn" type="button" onClick={onClose}><Icon name="x" /></button>
+        </div>
+        <div className="modal-body">
+          <div className="form-grid">
+            <div className="field">
+              <label>Turma *</label>
+              <select className="select" value={f.turmaId} onChange={upd('turmaId')} required>
+                <option value="">Selecionar…</option>
+                {turmas.map(t => <option key={t.id} value={t.id}>{t.nome} ({t.serie?.nome})</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Matéria *</label>
+              <select className="select" value={f.materiaId} onChange={upd('materiaId')} required>
+                <option value="">Selecionar…</option>
+                {materias.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Tipo *</label>
+              <select className="select" value={f.tipo} onChange={upd('tipo')}>
+                <option value="PROVA">Prova</option>
+                <option value="TRABALHO">Trabalho</option>
+                <option value="SIMULADO">Simulado</option>
+                <option value="RECUPERACAO">Recuperação</option>
+              </select>
+            </div>
+            <div className="field">
+              <label>Bimestre *</label>
+              <select className="select" value={f.bimestre} onChange={upd('bimestre')}>
+                {[1,2,3,4].map(b => <option key={b} value={b}>{b}º Bimestre</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ gridColumn: 'span 2' }}>
+              <label>Descrição</label>
+              <input className="input" value={f.descricao} onChange={upd('descricao')} placeholder="Ex: Prova de Álgebra" />
+            </div>
+            <div className="field">
+              <label>Data de aplicação *</label>
+              <input className="input" type="date" value={f.dataAplicacao} onChange={upd('dataAplicacao')} required />
+            </div>
+            <div className="field">
+              <label>Peso *</label>
+              <input className="input" type="number" min="0.1" max="10" step="0.1" value={f.peso} onChange={upd('peso')} required />
+            </div>
+          </div>
+          {erro && <div style={{ color: 'var(--bad)', fontSize: 12, marginTop: 4 }}>{erro}</div>}
+        </div>
+        <div className="modal-footer">
+          <button className="btn" type="button" onClick={onClose}>Cancelar</button>
+          <button className="btn accent" type="submit" disabled={saving}>{saving ? 'Salvando…' : 'Criar avaliação'}</button>
+        </div>
+      </form>
     </div>
   )
 }
