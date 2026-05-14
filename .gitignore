@@ -1,13 +1,3 @@
-# Maven
-backend/target/
-backend/.mvn/
-*.class
-
-# Node
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-
 # IDE
 .idea/
 *.iml
@@ -16,6 +6,9 @@ frontend/.vite/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code
+.claude/
 
 # Environment
 .env
